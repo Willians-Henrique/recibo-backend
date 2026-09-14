@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// SQLite não suporta enum/CHECK nativo no Prisma; os valores restritos (UF, tipo, garantia, etc.)
+// são tipados como union no models/ e validados na camada de serviço, não no schema.
+
+model Endereco {
+  id          String @id @default(uuid())
+  rua         String
+  numero      String
+  complemento String?
+  bairro      String
+  cidade      String
+  estado      String
+  pais        String @default("Brasil")
+
+  pessoas Pessoa[]
+  imoveis Imovel[]
+
+  @@map("enderecos")
+}
+
+model Pessoa {
+  id            String   @id @default(uuid())
+  enderecoId    String   @map("endereco_id")
+  endereco      Endereco @relation(fields: [enderecoId], references: [id])
+  nome          String
+  telefone      String
+  email         String
+  cpf           String   @unique
+  rg            String   @unique
+  orgaoEmissor  String   @map("orgao_emissor")
+  ufEmissorRg   String   @map("uf_emissor_rg")
+  estadoCivil   String   @map("estado_civil")
+  nacionalidade String
+
+  imoveisComoProprietario Imovel[]   @relation("ProprietarioImovel")
+  contratosComoInquilino  Contrato[] @relation("InquilinoContrato")
+  contratosComoDestino    Contrato[] @relation("DestinatarioContrato")
+
+  @@map("pessoas")
+}
+
+model Imovel {
+  id             String   @id @default(uuid())
+  enderecoId     String   @map("endereco_id")
+  endereco       Endereco @relation(fields: [enderecoId], references: [id])
+  proprietarioId String   @map("proprietario_id")
+  proprietario   Pessoa   @relation("ProprietarioImovel", fields: [proprietarioId], references: [id])
+  tipo           String
+  condominio     String?
+  codigoAgua     String?  @map("codigo_agua")
+  codigoEnergia  String?  @map("codigo_energia")
+  codigoIptu     String?  @map("codigo_iptu")
+  numeroRegistro String?  @map("numero_registro")
+
+  contratos Contrato[]
+
+  @@map("imoveis")
+}
+
+model Contrato {
+  id                    String   @id @default(uuid())
+  imovelId              String   @map("imovel_id")
+  imovel                Imovel   @relation(fields: [imovelId], references: [id])
+  inquilinoId           String   @map("inquilino_id")
+  inquilino             Pessoa   @relation("InquilinoContrato", fields: [inquilinoId], references: [id])
+  destinatarioId        String   @map("destinatario_id")
+  destinatario          Pessoa   @relation("DestinatarioContrato", fields: [destinatarioId], references: [id])
+  tipoLocacao           String   @map("tipo_locacao")
+  garantia              String
+  dataInicio            String   @map("data_inicio")
+  duracaoMeses          Int      @map("duracao_meses")
+  dataFim               String   @map("data_fim")
+  valorAluguel          String   @map("valor_aluguel")
+  taxaAdministracao     String   @map("taxa_administracao")
+  diaVencimento         Int      @map("dia_vencimento")
+  proximoReajuste       String   @map("proximo_reajuste")
+  acrescimoInquilino    String   @map("acrescimo_inquilino")
+  admAcrescimoInquilino String   @map("adm_acrescimo_inquilino")
+  descontoInquilino     String   @map("desconto_inquilino")
+  admDescontoInquilino  String   @map("adm_desconto_inquilino")
+  acrescimoProprietario String   @map("acrescimo_proprietario")
+  descontoProprietario  String   @map("desconto_proprietario")
+  iptu                  String
+  iptuProprietario      String   @map("iptu_proprietario")
+  condominio            String
+  condominioProprietario String  @map("condominio_proprietario")
+  seguroFianca          String   @map("seguro_fianca")
+  seguroIncendio        String   @map("seguro_incendio") @default("0")
+  parcelaCaucao         String   @map("parcela_caucao")
+  observacoes           String?
+  pix                   String?
+  agenciaConta          String?  @map("agencia_conta")
+  retirada              Boolean
+  ativo                 String   @default("ativo")
+
+  @@map("contratos")
+}
